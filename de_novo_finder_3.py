@@ -120,10 +120,11 @@ than two alternative alleles.
 Tranche variants
 3.94: Had never incorporated that if the greatest frequency (f) == 0, then it
 becomes 100/30Mbp
+3.95: Fixed a bug that led to the first variant being dropped from the VCF
 
 '''
 
-__version__ = 3.94
+__version__ = 3.95
 __author__ = 'Kaitlin E. Samocha <ksamocha@fas.harvard.edu>'
 __date__ = 'March 10th, 2016'
 
@@ -1319,14 +1320,18 @@ def main(vcffile, Fam, args):
     # Reading header lines to get VEP and individual arrays
     vep_field_names = '.'  # holder, should be replaced if VEP annotation is present
 
-    one_line = vcffile.next()
-    while one_line.startswith('#'):
-        one_line = one_line.lstrip('#')
-        if one_line.find('ID=CSQ') > -1:
-            vep_field_names = one_line.split('Format: ')[-1].strip('">').split('|')
-        if one_line.startswith('CHROM'):
-            labels = one_line.strip().split('\t')
-        one_line = vcffile.next()
+    header_line = vcffile.next()
+    while header_line.startswith('##'):
+        if header_line.find('ID=CSQ') > -1:
+            vep_field_names = header_line.split('Format: ')[-1].strip('">').split('|')
+        header_line = vcffile.next()
+
+    if not header_line.startswith('#CHROM'):  # should be the #CHROM line
+        sys.stderr.write('ERROR: Unexpected header line: Expected line starting with "#CHROM"'
+                         '\n  Found: {0}...'.format(header_line[:30]))
+        sys.exit(1)
+
+    labels = header_line.strip().split('\t')
 
     (Fam, am_kid, who_dad, who_mom) = trimfamily(Fam, labels)
     (female_Fam, female_kid, male_Fam, male_kid) = split_Fam(Fam, labels)
