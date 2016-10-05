@@ -120,10 +120,11 @@ than two alternative alleles.
 Tranche variants
 3.94: Had never incorporated that if the greatest frequency (f) == 0, then it
 becomes 100/30Mbp
+3.95: Fixed a bug that led to the first variant being dropped from the VCF
 
 '''
 
-__version__ = 3.94
+__version__ = 3.95
 __author__ = 'Kaitlin E. Samocha <ksamocha@fas.harvard.edu>'
 __date__ = 'March 10th, 2016'
 
@@ -134,49 +135,48 @@ import re
 import time
 import gzip
 
-
 # Note that this list of VEP annotations is current as of v77 with 2 included for backwards compatibility (VEP <= 75)
 # From Konrad Karczewski
 # Slight updates from Jack Kosmicki
 csq_order = ["transcript_ablation",
-"splice_donor_variant",
-"splice_acceptor_variant",
-"stop_gained",
-"frameshift_variant",
-"stop_lost",
-"start_lost",
-"initiator_codon_variant", #deprecated
-"transcript_amplification",
-"inframe_insertion",
-"inframe_deletion",
-"missense_variant",
-"protein_altering_variant",
-"splice_region_variant",
-"incomplete_terminal_codon_variant",
-"stop_retained_variant",
-"synonymous_variant",
-"coding_sequence_variant",
-"mature_miRNA_variant",
-"5_prime_UTR_variant",
-"3_prime_UTR_variant",
-"non_coding_transcript_exon_variant",
-"non_coding_exon_variant", # deprecated
-"intron_variant",
-"NMD_transcript_variant",
-"non_coding_transcript_variant",
-"nc_transcript_variant", # deprecated
-"upstream_gene_variant",
-"downstream_gene_variant",
-"TFBS_ablation",
-"TFBS_amplification",
-"TF_binding_site_variant",
-"regulatory_region_ablation",
-"regulatory_region_amplification",
-"feature_elongation",
-"regulatory_region_variant",
-"feature_truncation",
-"intergenic_variant",
-""]
+             "splice_donor_variant",
+             "splice_acceptor_variant",
+             "stop_gained",
+             "frameshift_variant",
+             "stop_lost",
+             "start_lost",
+             "initiator_codon_variant",  # deprecated
+             "transcript_amplification",
+             "inframe_insertion",
+             "inframe_deletion",
+             "missense_variant",
+             "protein_altering_variant",
+             "splice_region_variant",
+             "incomplete_terminal_codon_variant",
+             "stop_retained_variant",
+             "synonymous_variant",
+             "coding_sequence_variant",
+             "mature_miRNA_variant",
+             "5_prime_UTR_variant",
+             "3_prime_UTR_variant",
+             "non_coding_transcript_exon_variant",
+             "non_coding_exon_variant",  # deprecated
+             "intron_variant",
+             "NMD_transcript_variant",
+             "non_coding_transcript_variant",
+             "nc_transcript_variant",  # deprecated
+             "upstream_gene_variant",
+             "downstream_gene_variant",
+             "TFBS_ablation",
+             "TFBS_amplification",
+             "TF_binding_site_variant",
+             "regulatory_region_ablation",
+             "regulatory_region_amplification",
+             "feature_elongation",
+             "regulatory_region_variant",
+             "feature_truncation",
+             "intergenic_variant",
+             ""]
 csq_order_dict = dict(zip(csq_order, range(len(csq_order))))
 rev_csq_order_dict = dict(zip(range(len(csq_order)), csq_order))
 
@@ -202,7 +202,7 @@ def trimfamily(Fam, labels):
         elif gender in ('Female', 'female', 'F', 'f', '2'):
             gender = 2
         else:
-            gender = 0 # consider it as missing
+            gender = 0  # consider it as missing
 
         child = labels.index(child)
         dad = labels.index(dad)
@@ -215,10 +215,10 @@ def trimfamily(Fam, labels):
     who_mom = ['N' for i in range(9, len(labels))]
     for idx in range(9, len(labels)):
         if idx in Fam2.keys():
-            am_kid[idx-9] = 'Y'
+            am_kid[idx - 9] = 'Y'
             (dad_pos, mom_pos, gender, aff_status) = Fam2[idx]
-            who_dad[idx-9] = dad_pos
-            who_mom[idx-9] = mom_pos
+            who_dad[idx - 9] = dad_pos
+            who_mom[idx - 9] = mom_pos
 
     return (Fam2, am_kid, who_dad, who_mom)
 
@@ -232,18 +232,18 @@ def split_Fam(Fam_dict, labels):
     male_kid = ['N' for i in range(9, len(labels))]
 
     for family, fam_info in Fam_dict.items():
-        if fam_info[2] == 1: # male
+        if fam_info[2] == 1:  # male
             male_Fam[family] = fam_info
-        elif fam_info[2] == 2: # female
+        elif fam_info[2] == 2:  # female
             fem_Fam[family] = fam_info
         else:
             continue
 
     for idx in range(9, len(labels)):
         if idx in fem_Fam.keys():
-            female_kid[idx-9] = 'Y'
+            female_kid[idx - 9] = 'Y'
         elif idx in male_Fam.keys():
-            male_kid[idx-9] = 'Y'
+            male_kid[idx - 9] = 'Y'
         else:
             continue
 
@@ -267,7 +267,7 @@ def process_line(line, args):
 def is_child(column, Fam):
     "Checks if the het entry is a child"
     if column in Fam.keys():
-        return (Fam[column][0], Fam[column][1]) # Should return the parents
+        return (Fam[column][0], Fam[column][1])  # Should return the parents
 
     return None
 
@@ -289,7 +289,7 @@ def child_cuts(record, PL_pos, AD_pos, args):
         sys.stderr.write('Child had AD of ".": {0}\n'.format(record))
         return None
 
-    AD = record[AD_pos].split(',') # should be for hets only. not modifying
+    AD = record[AD_pos].split(',')  # should be for hets only. not modifying
     if ((AD[0] == '0') and (AD[1] == '0')):
         return None
 
@@ -300,7 +300,7 @@ def child_cuts(record, PL_pos, AD_pos, args):
     return (PL, ratio)
 
 
-def DPcheck(DPlist, args): # revamped
+def DPcheck(DPlist, args):  # revamped
     "Check that the child's depth is appropriate given the parents' depths"
     percent_depthratio = args.depthratio / 100.0
     dp_ratio = float(DPlist[0]) / (float(DPlist[1]) + float(DPlist[2]))
@@ -350,7 +350,8 @@ def VEP_annotate(var_annotation, vep_field_names, alt_allele):
         return (gene_name, functional_class)
 
     # array with dictionaries containing the information
-    annotations = [dict(zip(vep_field_names, x.split('|'))) for x in info_field['CSQ'].split(',') if len(vep_field_names) == len(x.split('|'))]
+    annotations = [dict(zip(vep_field_names, x.split('|'))) for x in info_field['CSQ'].split(',') if
+                   len(vep_field_names) == len(x.split('|'))]
 
     # loop through and choose the canonical annotation
     # check that alternative allele matches
@@ -387,7 +388,8 @@ def worst_csq_with_vep(annotation_list):
     for annotation in annotation_list:
         if compare_two_consequences(annotation['Consequence'], worst['Consequence']) < 0:
             worst = annotation
-        elif compare_two_consequences(annotation['Consequence'], worst['Consequence']) == 0 and annotation['CANONICAL'] == 'YES':
+        elif compare_two_consequences(annotation['Consequence'], worst['Consequence']) == 0 and annotation[
+            'CANONICAL'] == 'YES':
             worst = annotation
     worst['major_consequence'] = worst_csq_from_csq(worst['Consequence'])
     return worst
@@ -428,34 +430,34 @@ def worst_csq_index(csq_list):
 
 
 def parent_AD_cuts(dad_AD_info, mom_AD_info, args):
-	"Apply the AD filter to the parental data"
-        if dad_AD_info == '.':
-            dad_AD_ratio = 0.0
-        else:
-            dad_AD = dad_AD_info.split(',')
-            if ((dad_AD[0] == '0') and (dad_AD[1] == '0')):
-                return None
-            dad_AD_ratio = float(dad_AD[1])/(float(dad_AD[0]) + float(dad_AD[1]))
-
-        if mom_AD_info == '.':
-            mom_AD_ratio = 0.0
-        else:
-            mom_AD = mom_AD_info.split(',')
-            if ((mom_AD[0] == '0') and (mom_AD[1] == '0')):
-                return None
-            mom_AD_ratio = float(mom_AD[1])/(float(mom_AD[0]) + float(mom_AD[1]))
-
-	if ((args.maxparentAB <= dad_AD_ratio) or
-            (args.maxparentAB <= mom_AD_ratio)):
+    "Apply the AD filter to the parental data"
+    if dad_AD_info == '.':
+        dad_AD_ratio = 0.0
+    else:
+        dad_AD = dad_AD_info.split(',')
+        if ((dad_AD[0] == '0') and (dad_AD[1] == '0')):
             return None
+        dad_AD_ratio = float(dad_AD[1]) / (float(dad_AD[0]) + float(dad_AD[1]))
 
-	return (dad_AD_ratio, mom_AD_ratio)
+    if mom_AD_info == '.':
+        mom_AD_ratio = 0.0
+    else:
+        mom_AD = mom_AD_info.split(',')
+        if ((mom_AD[0] == '0') and (mom_AD[1] == '0')):
+            return None
+        mom_AD_ratio = float(mom_AD[1]) / (float(mom_AD[0]) + float(mom_AD[1]))
+
+    if ((args.maxparentAB <= dad_AD_ratio) or
+            (args.maxparentAB <= mom_AD_ratio)):
+        return None
+
+    return (dad_AD_ratio, mom_AD_ratio)
 
 
 def load_esp_counts(esp_file, chrom):
     "Open the ESP counts file and save variants for a given chromosome"
     esp_counts = {}
-    (count_ea, numchr_ea, af_ea, count_aa, numchr_aa, af_aa) = range(9,15)
+    (count_ea, numchr_ea, af_ea, count_aa, numchr_aa, af_aa) = range(9, 15)
 
     with open(esp_file, 'r') as esp_data:
         for line in esp_data:
@@ -470,7 +472,7 @@ def load_esp_counts(esp_file, chrom):
             # value format -- frequency
             allele_count = float(line[count_ea]) + float(line[count_aa])
             chr_count = float(line[numchr_ea]) + float(line[numchr_aa])
-            allele_freq = allele_count/chr_count
+            allele_freq = allele_count / chr_count
 
             esp_counts[chr_pos_change] = allele_freq
 
@@ -520,7 +522,7 @@ def get_variant_freq(esp_chr_counts, chr_pos_change, variant_annotation):
 
     # Determine allele frequency if found in ESP
     if chr_pos_change in esp_chr_counts.keys():
-        #sys.stderr.write('Found in ESP: {0}\n'.format(chr_pos_change))
+        # sys.stderr.write('Found in ESP: {0}\n'.format(chr_pos_change))
         esp_freq = esp_chr_counts[chr_pos_change]
 
     # Determine VCF allele frequency (divide AC-1 by AN)
@@ -539,13 +541,13 @@ def get_variant_freq(esp_chr_counts, chr_pos_change, variant_annotation):
             break
 
     try:
-        vcf_freq = (allele_count-1)/allele_num
+        vcf_freq = (allele_count - 1) / allele_num
     except UnboundLocalError:
         sys.exit('What is wrong: {0}\n'.format(variant_annotation))
 
     # If both esp_freq and vcf_freq are 0, f = 100/30Mbp
-    if (esp_freq==0.0) and (vcf_freq==0.0):
-        return (100.0/30000000)
+    if (esp_freq == 0.0) and (vcf_freq == 0.0):
+        return (100.0 / 30000000)
 
     # Return the greater of the two allele frequencies
     if esp_freq < vcf_freq:
@@ -559,15 +561,15 @@ def transform_PL_to_prob(PLs):
     # PLs are weird and have to be adjusted like so:
     # P_ref = 10^(-PLref/10)/(10^(-PLref/10) + 10^(-PLhet/10) + 10^(-PLalt/10))
 
-    adj_PL_ref = 10**(-float(PLs[0])/10)
-    adj_PL_het = 10**(-float(PLs[1])/10)
-    adj_PL_alt = 10**(-float(PLs[2])/10)
+    adj_PL_ref = 10 ** (-float(PLs[0]) / 10)
+    adj_PL_het = 10 ** (-float(PLs[1]) / 10)
+    adj_PL_alt = 10 ** (-float(PLs[2]) / 10)
 
     sum_adj_PLs = adj_PL_ref + adj_PL_het + adj_PL_alt
 
-    P_ref = adj_PL_ref/sum_adj_PLs
-    P_het = adj_PL_het/sum_adj_PLs
-    P_alt = adj_PL_alt/sum_adj_PLs
+    P_ref = adj_PL_ref / sum_adj_PLs
+    P_het = adj_PL_het / sum_adj_PLs
+    P_alt = adj_PL_alt / sum_adj_PLs
 
     return (P_ref, P_het, P_alt)
 
@@ -586,15 +588,15 @@ def get_prob_true_dn(child_PL, dad_PL, mom_PL, variant_pop_freq):
     (mom_P_ref, mom_P_het, mom_P_alt) = transform_PL_to_prob(mom_PL)
 
     # Determine p(de novo | data) -- 1 in 30Mbp is what we expect for dn rate
-    p_dn_data = dad_P_ref*mom_P_ref*child_P_het*(1.0/30000000)
+    p_dn_data = dad_P_ref * mom_P_ref * child_P_het * (1.0 / 30000000)
 
     # Determine p(missed het in parent | data) -- split for clarity
-    p_data_onehet = (dad_P_het*mom_P_ref + dad_P_ref*mom_P_het)*child_P_het
-    p_oneparent_het = 1-((1-variant_pop_freq)**4)
-    p_mhip_data = p_data_onehet*p_oneparent_het
+    p_data_onehet = (dad_P_het * mom_P_ref + dad_P_ref * mom_P_het) * child_P_het
+    p_oneparent_het = 1 - ((1 - variant_pop_freq) ** 4)
+    p_mhip_data = p_data_onehet * p_oneparent_het
 
     # Determine the new metric
-    metric = p_dn_data/(p_dn_data + p_mhip_data)
+    metric = p_dn_data / (p_dn_data + p_mhip_data)
 
     return metric
 
@@ -604,15 +606,15 @@ def process_autosome_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                              am_kid, who_dad, who_mom, vep_field_names):
     "Go through the VCF line by line to find de novo variants"
     for column, entry in enumerate(line):
-        if not entry.startswith(('0/1','1/0')):
+        if not entry.startswith(('0/1', '1/0')):
             continue
 
         # If a het site has been found, check if the het is a child
-        if am_kid[column-9] == 'N':
+        if am_kid[column - 9] == 'N':
             continue
         else:
-            dad_pos = who_dad[column-9]
-            mom_pos = who_mom[column-9]
+            dad_pos = who_dad[column - 9]
+            mom_pos = who_mom[column - 9]
 
         # Make sure the het variant passes the quality filters
         child_data = child_cuts(entry.split(':'), PL_pos, AD_pos, args)
@@ -668,7 +670,7 @@ def process_autosome_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                                             chr_pos_change,
                                             variant_annotation)
         if variant_pop_freq == 0:
-            variant_pop_freq = (100.0/30000000)
+            variant_pop_freq = (100.0 / 30000000)
             # Rough expected number of het sites not in ESP
 
         # Establish the chance that this is a true de novo event
@@ -697,9 +699,10 @@ def process_autosome_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 mom_PL[1], child_AD_ratio, dad_AD_ratio, mom_AD_ratio,
                 DP[0], DP[1], DP[2], dp_ratio, prob_true_dn, var_gene,
                 var_category, qual_flag, variant_annotation
-                ]
+            ]
         elif args.annotatevar_VEP:
-            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names, line[4]) #alt allele also provided
+            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names,
+                                                    line[4])  # alt allele also provided
             res_indiv = [
                 line[0], line[1], line[2], line[3], line[4],
                 labels[column], labels[dad_pos], labels[mom_pos],
@@ -707,7 +710,7 @@ def process_autosome_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 mom_PL[1], child_AD_ratio, dad_AD_ratio, mom_AD_ratio,
                 DP[0], DP[1], DP[2], dp_ratio, prob_true_dn, var_gene,
                 var_category, qual_flag, variant_annotation
-                ]
+            ]
         else:
             res_indiv = [
                 line[0], line[1], line[2], line[3], line[4],
@@ -716,14 +719,14 @@ def process_autosome_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 mom_PL[1], child_AD_ratio, dad_AD_ratio, mom_AD_ratio,
                 DP[0], DP[1], DP[2], dp_ratio, prob_true_dn, qual_flag,
                 line[7]
-                ]
+            ]
 
         print('\t'.join(map(str, res_indiv)))
 
 
 def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
-                             esp_chr_counts, labels, chrom_under_study,
-                             am_kid, who_dad, who_mom, vep_field_names):
+                          esp_chr_counts, labels, chrom_under_study,
+                          am_kid, who_dad, who_mom, vep_field_names):
     '''Go through the VCF line by line to find de novo variants on lines with
     multiple alt alleles'''
     for column, entry in enumerate(line):
@@ -731,11 +734,11 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
             continue
 
         # If a het site has been found, check if the het is a child
-        if am_kid[column-9] == 'N':
+        if am_kid[column - 9] == 'N':
             continue
         else:
-            dad_pos = who_dad[column-9]
-            mom_pos = who_mom[column-9]
+            dad_pos = who_dad[column - 9]
+            mom_pos = who_mom[column - 9]
 
         # Check that the parents are both homozygous reference -- logic moved
         if not line[dad_pos].startswith('0/0'):
@@ -752,14 +755,14 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
         except IndexError:
             continue
 
-	# Replacing the PL and AD information for 0/2
+        # Replacing the PL and AD information for 0/2
         # Before 0/2 : R,A1,A2 : DP : GQ : RR,RA1,A1A1,RA2,A1A2,A2A2
         # After 0/2 : R,A2 : DP : GQ : RR,RA2,A2A2
         if entry.startswith('0/2'):
             # Fix child
             new_entry = entry.split(':')
             k_AD = new_entry[AD_pos].split(',')
-            new_entry[AD_pos] = ','.join([k_AD[0],k_AD[2]])
+            new_entry[AD_pos] = ','.join([k_AD[0], k_AD[2]])
             k_PL = new_entry[PL_pos].split(',')
             new_entry[PL_pos] = ','.join([k_PL[0], k_PL[3], k_PL[5]])
             entry = ':'.join(new_entry)
@@ -769,7 +772,7 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 dad_record[AD_pos] = '{0},0'.format(dad_record[DP_pos])
             else:
                 d_AD = dad_record[AD_pos].split(',')
-                dad_record[AD_pos] = ','.join([d_AD[0],d_AD[2]])
+                dad_record[AD_pos] = ','.join([d_AD[0], d_AD[2]])
             d_PL = dad_record[PL_pos].split(',')
             dad_record[PL_pos] = ','.join([d_PL[0], d_PL[3], d_PL[5]])
 
@@ -778,10 +781,9 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 mom_record[AD_pos] = '{0},0'.format(mom_record[DP_pos])
             else:
                 m_AD = mom_record[AD_pos].split(',')
-                mom_record[AD_pos] = ','.join([m_AD[0],m_AD[2]])
+                mom_record[AD_pos] = ','.join([m_AD[0], m_AD[2]])
             m_PL = mom_record[PL_pos].split(',')
             mom_record[PL_pos] = ','.join([m_PL[0], m_PL[3], m_PL[5]])
-
 
         # Make sure the het variant passes the quality filters
         child_data = child_cuts(entry.split(':'), PL_pos, AD_pos, args)
@@ -823,10 +825,10 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
 
         if entry.startswith('0/2'):
             alt_allele = alt_alleles[1]
-            variant_annotation_s[0] = 'AC=' + v_AC[1] # to make "AC=2"
+            variant_annotation_s[0] = 'AC=' + v_AC[1]  # to make "AC=2"
         else:
             alt_allele = alt_alleles[0]
-            variant_annotation_s[0] = v_AC[0] # should be "AC=1"
+            variant_annotation_s[0] = v_AC[0]  # should be "AC=1"
 
         variant_annotation = ';'.join(variant_annotation_s)
         chr_pos_change = '{0}:{1}:{2}:{3}'.format(chrom_under_study,
@@ -839,7 +841,7 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                                             chr_pos_change,
                                             variant_annotation)
         if variant_pop_freq == 0:
-            variant_pop_freq = (100.0/30000000)
+            variant_pop_freq = (100.0 / 30000000)
             # Rough expected number of het sites not in ESP
 
         # Establish the chance that this is a true de novo event
@@ -879,10 +881,11 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 child_sex, child_aff_status, child_PL[0], dad_PL[1],
                 mom_PL[1], child_AD_ratio, dad_AD_ratio, mom_AD_ratio,
                 DP[0], DP[1], DP[2], dp_ratio, prob_true_dn, var_gene,
-                var_category, qual_flag,line[7]
-                ]
+                var_category, qual_flag, line[7]
+            ]
         elif args.annotatevar_VEP:
-            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names, alt_allele) #alt allele also provided
+            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names,
+                                                    alt_allele)  # alt allele also provided
             if ',' in var_gene:
                 var_genes = var_gene.split(',')
                 if entry.startswith('0/2'):
@@ -902,8 +905,8 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 child_sex, child_aff_status, child_PL[0], dad_PL[1],
                 mom_PL[1], child_AD_ratio, dad_AD_ratio, mom_AD_ratio,
                 DP[0], DP[1], DP[2], dp_ratio, prob_true_dn, var_gene,
-                var_category, qual_flag,line[7]
-                ]
+                var_category, qual_flag, line[7]
+            ]
         else:
             res_indiv = [
                 line[0], line[1], line[2], line[3], alt_allele,
@@ -912,7 +915,7 @@ def process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 mom_PL[1], child_AD_ratio, dad_AD_ratio, mom_AD_ratio,
                 DP[0], DP[1], DP[2], dp_ratio, prob_true_dn, qual_flag,
                 line[7]
-                ]
+            ]
 
         print('\t'.join(map(str, res_indiv)))
 
@@ -926,10 +929,10 @@ def process_hemizygous_variants(line, Fam, PL_pos, AD_pos, DP_pos, args,
             continue
 
         # Check if the column is a kid's
-        if gender_kid[column-9] == 'N':
+        if gender_kid[column - 9] == 'N':
             continue
         else:
-            par_pos = who_parent[column-9]
+            par_pos = who_parent[column - 9]
 
         # Only keep lines where and parents are ref
         if not line[par_pos].startswith('0/0'):
@@ -972,8 +975,8 @@ def process_hemizygous_variants(line, Fam, PL_pos, AD_pos, DP_pos, args,
         # Depth filter
         child_dp = child_record[DP_pos]
 
-        dp_ratio = float(child_dp)/float(par_record[DP_pos])
-        percent_depthratio = args.depthratio/100.0
+        dp_ratio = float(child_dp) / float(par_record[DP_pos])
+        percent_depthratio = args.depthratio / 100.0
         if dp_ratio <= percent_depthratio:
             continue
 
@@ -993,9 +996,8 @@ def process_hemizygous_variants(line, Fam, PL_pos, AD_pos, DP_pos, args,
         (par_P_ref, par_P_het, par_P_alt) = transform_PL_to_prob(par_PL)
 
         # Determine p(de novo | data) and part of p(missed alt | data)
-        p_dn_data = par_P_ref*child_P_alt*(1.0/30000000)
-        p_data_missedcall = (par_P_het + par_P_alt)*child_P_alt
-
+        p_dn_data = par_P_ref * child_P_alt * (1.0 / 30000000)
+        p_data_missedcall = (par_P_het + par_P_alt) * child_P_alt
 
         # Find the population frequency of the variant
         # Max of ESP frequency and frequency in the VCF
@@ -1003,13 +1005,13 @@ def process_hemizygous_variants(line, Fam, PL_pos, AD_pos, DP_pos, args,
                                             chr_pos_change,
                                             variant_annotation)
         if variant_pop_freq == 0:
-            variant_pop_freq = (100.0/30000000)
+            variant_pop_freq = (100.0 / 30000000)
             # Rough expected number of het sites not in ESP
 
         # Determine the new metric and remove unlikely de novo variants
-        p_oneparent_het = 1-((1-variant_pop_freq)**4)
-        p_mhip_data = p_data_missedcall*p_oneparent_het
-        prob_true_dn = p_dn_data/(p_dn_data + p_mhip_data)
+        p_oneparent_het = 1 - ((1 - variant_pop_freq) ** 4)
+        p_mhip_data = p_data_missedcall * p_oneparent_het
+        prob_true_dn = p_dn_data / (p_dn_data + p_mhip_data)
         if prob_true_dn < args.pdnmetric:
             continue
 
@@ -1049,9 +1051,10 @@ def process_hemizygous_variants(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 child_AD_ratio, dad_AD_ratio, mom_AD_ratio, child_record[DP_pos],
                 dad_DP, mom_DP, dp_ratio, prob_true_dn, var_gene, var_category,
                 qual_flag, variant_annotation
-                ]
+            ]
         elif args.annotatevar_VEP:
-            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names, line[4]) #alt allele also provided
+            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names,
+                                                    line[4])  # alt allele also provided
             res_indiv = [
                 line[0], line[1], line[2], line[3], line[4],
                 labels[column], labels[dad_pos], labels[mom_pos],
@@ -1059,7 +1062,7 @@ def process_hemizygous_variants(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 child_AD_ratio, dad_AD_ratio, mom_AD_ratio, child_record[DP_pos],
                 dad_DP, mom_DP, dp_ratio, prob_true_dn, var_gene, var_category,
                 qual_flag, variant_annotation
-                ]
+            ]
         else:
             res_indiv = [
                 line[0], line[1], line[2], line[3], line[4],
@@ -1067,7 +1070,7 @@ def process_hemizygous_variants(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 gender, aff_status, child_PL[0], dad_PL[1], mom_PL[1],
                 child_AD_ratio, dad_AD_ratio, mom_AD_ratio, child_record[DP_pos],
                 dad_DP, mom_DP, dp_ratio, prob_true_dn, qual_flag, line[7]
-                ]
+            ]
 
         print('\t'.join(map(str, res_indiv)))
 
@@ -1082,10 +1085,10 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
             continue
 
         # Check if the column is a kid's
-        if gender_kid[column-9] == 'N':
+        if gender_kid[column - 9] == 'N':
             continue
         else:
-            par_pos = who_parent[column-9]
+            par_pos = who_parent[column - 9]
 
         # Check that the parent is homozygous reference
         if not line[par_pos].startswith('0/0'):
@@ -1094,13 +1097,13 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
         child_record = entry.split(':')
         par_record = line[par_pos].split(':')
 
-	# Replacing the PL and AD information for 2/2
+        # Replacing the PL and AD information for 2/2
         # Before 2/2 : R,A1,A2 : DP : GQ : RR,RA1,A1A1,RA2,A1A2,A2A2
         # After 2/2 : R,A2 : DP : GQ : RR,RA2,A2A2
         if entry.startswith('2/2'):
             # Fix child
             k_AD = child_record[AD_pos].split(',')
-            child_record[AD_pos] = ','.join([k_AD[0],k_AD[2]])
+            child_record[AD_pos] = ','.join([k_AD[0], k_AD[2]])
             k_PL = child_record[PL_pos].split(',')
             child_record[PL_pos] = ','.join([k_PL[0], k_PL[3], k_PL[5]])
 
@@ -1109,7 +1112,7 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 par_record[AD_pos] = '{0},0'.format(par_record[DP_pos])
             else:
                 p_AD = par_record[AD_pos].split(',')
-                par_record[AD_pos] = ','.join([p_AD[0],p_AD[2]])
+                par_record[AD_pos] = ','.join([p_AD[0], p_AD[2]])
             p_PL = par_record[PL_pos].split(',')
             par_record[PL_pos] = ','.join([p_PL[0], p_PL[3], p_PL[5]])
 
@@ -1147,8 +1150,8 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
         # Depth filter
         child_dp = child_record[DP_pos]
 
-        dp_ratio = float(child_dp)/float(par_record[DP_pos])
-        percent_depthratio = args.depthratio/100.0
+        dp_ratio = float(child_dp) / float(par_record[DP_pos])
+        percent_depthratio = args.depthratio / 100.0
         if dp_ratio <= percent_depthratio:
             continue
 
@@ -1162,10 +1165,10 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
 
         if entry.startswith('2/2'):
             alt_allele = alt_alleles[1]
-            variant_annotation_s[0] = 'AC=' + v_AC[1] # to make "AC=2"
+            variant_annotation_s[0] = 'AC=' + v_AC[1]  # to make "AC=2"
         else:
             alt_allele = alt_alleles[0]
-            variant_annotation_s[0] = v_AC[0] # should be "AC=1"
+            variant_annotation_s[0] = v_AC[0]  # should be "AC=1"
 
         variant_annotation = ';'.join(variant_annotation_s)
         chr_pos_change = '{0}:{1}:{2}:{3}'.format(chrom_under_study,
@@ -1179,8 +1182,8 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
         (par_P_ref, par_P_het, par_P_alt) = transform_PL_to_prob(par_PL)
 
         # Determine p(de novo | data) and part of p(missed alt | data)
-        p_dn_data = par_P_ref*child_P_alt*(1.0/30000000)
-        p_data_missedcall = (par_P_het + par_P_alt)*child_P_alt
+        p_dn_data = par_P_ref * child_P_alt * (1.0 / 30000000)
+        p_data_missedcall = (par_P_het + par_P_alt) * child_P_alt
 
         # Find the population frequency of the variant
         # Max of ESP frequency and frequency in the VCF
@@ -1188,13 +1191,13 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                                             chr_pos_change,
                                             variant_annotation)
         if variant_pop_freq == 0:
-            variant_pop_freq = (100.0/30000000)
+            variant_pop_freq = (100.0 / 30000000)
             # Rough expected number of het sites not in ESP
 
         # Determine the new metric and remove unlikely de novo variants
-        p_oneparent_het = 1-((1-variant_pop_freq)**4)
-        p_mhip_data = p_data_missedcall*p_oneparent_het
-        prob_true_dn = p_dn_data/(p_dn_data + p_mhip_data)
+        p_oneparent_het = 1 - ((1 - variant_pop_freq) ** 4)
+        p_mhip_data = p_data_missedcall * p_oneparent_het
+        prob_true_dn = p_dn_data / (p_dn_data + p_mhip_data)
         if prob_true_dn < args.pdnmetric:
             continue
 
@@ -1247,9 +1250,10 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 child_AD_ratio, dad_AD_ratio, mom_AD_ratio, child_record[DP_pos],
                 dad_DP, mom_DP, dp_ratio, prob_true_dn, var_gene, var_category,
                 qual_flag, line[7]
-                ]
+            ]
         elif args.annotatevar_VEP:
-            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names, alt_allele) #alt allele also provided
+            (var_gene, var_category) = VEP_annotate(variant_annotation, vep_field_names,
+                                                    alt_allele)  # alt allele also provided
             if ',' in var_gene:
                 var_genes = var_gene.split(',')
                 if entry.startswith('2/2'):
@@ -1270,7 +1274,7 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 child_AD_ratio, dad_AD_ratio, mom_AD_ratio, child_record[DP_pos],
                 dad_DP, mom_DP, dp_ratio, prob_true_dn, var_gene, var_category,
                 qual_flag, line[7]
-                ]
+            ]
         else:
             res_indiv = [
                 line[0], line[1], line[2], line[3], alt_allele,
@@ -1278,7 +1282,7 @@ def process_multi_hemi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                 gender, aff_status, child_PL[0], dad_PL[1], mom_PL[1],
                 child_AD_ratio, dad_AD_ratio, mom_AD_ratio, child_record[DP_pos],
                 dad_DP, mom_DP, dp_ratio, prob_true_dn, qual_flag, line[7]
-                ]
+            ]
 
         print('\t'.join(map(str, res_indiv)))
 
@@ -1290,9 +1294,9 @@ def main(vcffile, Fam, args):
     sys.stderr.write('*** WARNGING: Only processing sites up to triallelic (one ref, two alt) ***\n')
 
     # Printing out script and run information
-    print('## Run start date and time: {0}'.format(time.strftime("%c"))) # date and time
-    print('## Script version: {0}'.format(__version__)) # script version used
-    print('## Command given: python {0}'.format(' '.join(sys.argv))) # full command
+    print('## Run start date and time: {0}'.format(time.strftime("%c")))  # date and time
+    print('## Script version: {0}'.format(__version__))  # script version used
+    print('## Command given: python {0}'.format(' '.join(sys.argv)))  # full command
 
     # Printing labels line
     if args.annotatevar | args.annotatevar_VEP:
@@ -1303,7 +1307,7 @@ def main(vcffile, Fam, args):
             "Mom_AD_Ratio", "DP_Child", "DP_Dad", "DP_Mom", "DP_Ratio",
             "Prob_dn", "Gene_name", "Category", "Validation_Likelihood",
             "Annotation"
-            ]))
+        ]))
     else:
         print('\t'.join([
             "Chr", "Pos", "rsID", "Ref", "Alt", "Child_ID", "Dad_ID",
@@ -1311,21 +1315,25 @@ def main(vcffile, Fam, args):
             "Dad_PL_AB", "Mom_PL_AB", "Child_AD_Ratio", "Dad_AD_Ratio",
             "Mom_AD_Ratio", "DP_Child", "DP_Dad", "DP_Mom", "DP_Ratio",
             "Prob_dn", "Validation_Likelihood", "Annotation"
-            ]))
+        ]))
 
     # Reading header lines to get VEP and individual arrays
-    vep_field_names = '.' # holder, should be replaced if VEP annotation is present
+    vep_field_names = '.'  # holder, should be replaced if VEP annotation is present
 
-    one_line = vcffile.next()
-    while one_line.startswith('#'):
-        one_line = one_line.lstrip('#')
-        if one_line.find('ID=CSQ') > -1:
-            vep_field_names = one_line.split('Format: ')[-1].strip('">').split('|')
-        if one_line.startswith('CHROM'):
-            labels = one_line.strip().split('\t')
-        one_line = vcffile.next()
+    header_line = vcffile.next()
+    while header_line.startswith('##'):
+        if header_line.find('ID=CSQ') > -1:
+            vep_field_names = header_line.split('Format: ')[-1].strip('">').split('|')
+        header_line = vcffile.next()
 
-    (Fam, am_kid, who_dad, who_mom)= trimfamily(Fam, labels)
+    if not header_line.startswith('#CHROM'):  # should be the #CHROM line
+        sys.stderr.write('ERROR: Unexpected header line: Expected line starting with "#CHROM"'
+                         '\n  Found: {0}...'.format(header_line[:30]))
+        sys.exit(1)
+
+    labels = header_line.strip().split('\t')
+
+    (Fam, am_kid, who_dad, who_mom) = trimfamily(Fam, labels)
     (female_Fam, female_kid, male_Fam, male_kid) = split_Fam(Fam, labels)
 
     no_PL_lines = 0
@@ -1336,7 +1344,7 @@ def main(vcffile, Fam, args):
     sys.stderr.write('Loading chr{0} counts...\n'.format(current_chrom))
     esp_chr_counts = load_esp_counts(args.esp, current_chrom)
     sys.stderr.write('\tFinished loading chr{0} counts\n'.format(
-        current_chrom))
+            current_chrom))
 
     # Move line by line through the VCF
     for line in vcffile:
@@ -1350,25 +1358,25 @@ def main(vcffile, Fam, args):
         if chrom_under_study != current_chrom:
             current_chrom = chrom_under_study
             sys.stderr.write('Loading chr{0} counts...\n'.format(
-                current_chrom))
+                    current_chrom))
             esp_chr_counts = load_esp_counts(args.esp, current_chrom)
             sys.stderr.write('\tFinished loading chr{0} counts\n'.format(
-                current_chrom))
+                    current_chrom))
 
-        if not process_line(line, args): # removes non-PASSing lines
+        if not process_line(line, args):  # removes non-PASSing lines
             continue
 
-    	format_line = line[8].split(':')
-    	try:
+        format_line = line[8].split(':')
+        try:
             PL_pos = format_line.index('PL')
-    	except ValueError:
-            no_PL_lines += 1 # Added to count lines missing PL
+        except ValueError:
+            no_PL_lines += 1  # Added to count lines missing PL
             continue
 
         try:
             AD_pos = format_line.index('AD')
         except ValueError:
-            no_AD_lines += 1 # Added to count lines missing AD
+            no_AD_lines += 1  # Added to count lines missing AD
             continue
 
         DP_pos = format_line.index('DP')
@@ -1376,7 +1384,7 @@ def main(vcffile, Fam, args):
         # Finding multi-allelic lines that should be processed (no indels)
         multi_flag = False
         ref_allele = line[3]
-        if ',' in ref_allele: # I don't think this should happen
+        if ',' in ref_allele:  # I don't think this should happen
             continue
 
         alt_allele = line[4]
@@ -1392,7 +1400,7 @@ def main(vcffile, Fam, args):
         if chrom_under_study in ('x', 'X', '23'):
             chrom_under_study = 'X'
             if ((int(line[1]) < 2699520) or
-                (int(line[1]) > 154931044)): # pseudoautosomal regions
+                    (int(line[1]) > 154931044)):  # pseudoautosomal regions
                 if multi_flag == True:
                     process_multi_variant(line, Fam, PL_pos, AD_pos, DP_pos, args,
                                           esp_chr_counts, labels,
@@ -1415,7 +1423,6 @@ def main(vcffile, Fam, args):
                                                  DP_pos, args, esp_chr_counts,
                                                  labels, chrom_under_study,
                                                  female_kid, who_dad, who_mom, vep_field_names)
-
 
                 if len(male_Fam) > 0:
                     if multi_flag == True:
@@ -1519,7 +1526,7 @@ if __name__ == "__main__":
         for line in pedfile:
             line = line.split()
             if (line[2] == '0') and (line[3] == '0'):
-		continue
+                continue
             Fam[line[1]] = [line[2], line[3], line[4], line[5]]
             # Stores kid: [dad, mom, gender, affected]
 
